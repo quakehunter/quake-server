@@ -24,8 +24,24 @@ app.get('/kandilli', async (req, res) => {
       lines.forEach(line => {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 7) {
-          let magnitude = parts[5];
-          if (magnitude.includes('-.-')) magnitude = 'Bilinmiyor'; // Magnitude yoksa
+          let rawLocation = parts.slice(6).join(' ').trim();
+
+          // Eğer location başında büyüklük gibi bir sayı varsa onu ayıkla
+          const locationParts = rawLocation.split(' ');
+          let extractedMagnitude = parts[5];
+
+          if (extractedMagnitude.includes('-.-')) {
+            // Eğer büyüklük kısmı yoksa ve lokasyonda varsa al
+            const possibleMagnitude = locationParts[0];
+            if (!isNaN(possibleMagnitude)) {
+              extractedMagnitude = possibleMagnitude;
+              locationParts.shift(); // Lokasyon adından büyüklüğü çıkar
+            } else {
+              extractedMagnitude = 'Bilinmiyor';
+            }
+          }
+
+          const cleanLocation = locationParts.join(' ').replace(/ /g, 'İ').replace(/İ̇/g, 'İ');
 
           earthquakes.push({
             date: parts[0],
@@ -33,8 +49,8 @@ app.get('/kandilli', async (req, res) => {
             latitude: parts[2],
             longitude: parts[3],
             depth: parts[4],
-            magnitude: magnitude,
-            location: parts.slice(6).join(' ').replace(/İ̇/g, 'İ') // Bozuk harf düzeltmesi
+            magnitude: extractedMagnitude,
+            location: cleanLocation
           });
         }
       });
