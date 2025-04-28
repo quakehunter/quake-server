@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const iconv = require('iconv-lite'); // Ekstra paket
+const iconv = require('iconv-lite');
 
 const app = express();
 const PORT = 3000;
@@ -12,7 +12,7 @@ app.get('/kandilli', async (req, res) => {
       responseType: 'arraybuffer'
     });
 
-    const html = iconv.decode(response.data, 'windows-1254'); // Türkçe karakterleri çöz
+    const html = iconv.decode(response.data, 'windows-1254');
     const $ = cheerio.load(html);
 
     let earthquakes = [];
@@ -24,7 +24,18 @@ app.get('/kandilli', async (req, res) => {
       lines.forEach(line => {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 7) {
-          const magnitude = parseFloat(parts[5]);
+          // Önce parts[5] içindeki büyüklüğü almayı dene
+          let magnitude = parseFloat(parts[5]);
+          
+          // Eğer geçersizse (NaN) location'ın başına bak
+          if (isNaN(magnitude)) {
+            const locationFirstPart = parts.slice(6).join(' ').trim();
+            const magMatch = locationFirstPart.match(/^(\d+(\.\d+)?)/); // Başta sayı var mı?
+            if (magMatch) {
+              magnitude = parseFloat(magMatch[1]);
+            }
+          }
+
           earthquakes.push({
             date: parts[0],
             time: parts[1],
@@ -32,7 +43,7 @@ app.get('/kandilli', async (req, res) => {
             longitude: parts[3],
             depth: parts[4],
             magnitude: isNaN(magnitude) ? 'Bilinmiyor' : magnitude.toString(),
-            location: parts.slice(6).join(' ')
+            location: parts.slice(6).join(' ').replace(/^(\d+(\.\d+)?\s+-\.-\s+-\.-\s+)/, '').trim()
           });
         }
       });
